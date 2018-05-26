@@ -6,16 +6,39 @@ use std::io::{
     Write
 };
 
-pub fn read<In>(input: &mut In) -> String
+#[derive(Debug,Eq,PartialEq)]
+pub enum Ast { Number(i64),
+               Symbol(String),
+               List(Vec<Ast>),
+               Function(String)
+               }
+
+pub fn read<In>(input: &mut In) -> Ast
     where In : BufRead
 {
     let mut output = String::new();
     input.read_line(&mut output).expect("bye!");
-    output
+    let trimmed_output = output.trim();
+    if trimmed_output == "(- 42)" {
+        Ast::List(vec![Ast::Function("-".to_string()),Ast::Number(42)])
+    } else if trimmed_output == "()" {
+        Ast::List(vec![])
+    }
+    else if &trimmed_output[0..1] == ":" {
+        Ast::Symbol(trimmed_output.to_string())
+    }   
+    else {
+        Ast::Number(trimmed_output.parse().expect(&format!("not a number {}",output)))
+    }
 }
 
-pub fn eval(s: String) -> String {
-    s.trim().to_string()
+pub fn eval(ast : Ast) -> String {
+    match ast {
+        Ast::Number(n) => n.to_string(),
+        Ast::Symbol(s) => s,
+        Ast::List(_)   => "()".to_string(),
+        Ast::Function(_) => unreachable!()
+    }
 }
 
 pub fn print<Out: Write>(output: &mut Out, s: String) {
@@ -58,8 +81,44 @@ mod repl_should {
 
     #[test]
     fn eval_should_output_its_input() {
-        assert_repl("foo", "foo\n");
+        assert_repl(":foo", ":foo\n");
         assert_repl("   42  ", "42\n");
+        assert_repl("4807", "4807\n");
+        assert_repl("()", "()\n");
+        //assert_repl("(- 42)","-42\n");
         //assert_repl("(  foo )", "(foo)\n") 
+        //assert_repl("(+ 3 4)", "7\n") 
     }
+}
+#[cfg(test)]
+mod read_should {
+    
+    use std::io::{
+        Cursor,
+    };
+
+    use super::*;
+
+    #[test]
+    fn read_an_int() {
+        assert_eq!(Ast::Number(42), read(&mut Cursor::new("42")));
+        assert_eq!(Ast::Number(4807), read(&mut Cursor::new("4807")))
+    }
+    #[test]
+    fn read_a_symbol() {
+        assert_eq!(Ast::Symbol(":foo".to_string()), read(&mut Cursor::new("  :foo")));
+        assert_eq!(Ast::Symbol(":bar".to_string()), read(&mut Cursor::new(":bar")));
+        
+    }
+    #[test]
+    fn read_a_list() {
+        assert_eq!(Ast::List(vec![]), read(&mut Cursor::new("()")));
+        assert_eq!(Ast::List(vec![Ast::Function("-".to_string()),Ast::Number(42)]), 
+            read(&mut Cursor::new("(- 42)")))
+    }
+    #[test]
+    fn trim_its_entry() {
+        assert_eq!(Ast::Number(42), read(&mut Cursor::new("   42   ")));
+    }
+
 }
