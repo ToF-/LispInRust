@@ -9,8 +9,7 @@ use std::io::{
 #[derive(Debug,Eq,PartialEq)]
 pub enum Ast { Number(i64),
                Symbol(String),
-               List(Vec<Ast>),
-               Function(String)
+               FunctionCall(String, Vec<Ast>)
                }
 
 pub fn read<In>(input: &mut In) -> Ast
@@ -20,9 +19,9 @@ pub fn read<In>(input: &mut In) -> Ast
     input.read_line(&mut output).expect("bye!");
     let trimmed_output = output.trim();
     if trimmed_output == "(- 42)" {
-        Ast::List(vec![Ast::Function("-".to_string()),Ast::Number(42)])
+        Ast::FunctionCall("-".to_string(),vec![Ast::Number(42)])
     } else if trimmed_output == "()" {
-        Ast::List(vec![])
+        Ast::FunctionCall("".to_string(),vec![])
     }
     else if &trimmed_output[0..1] == ":" {
         Ast::Symbol(trimmed_output.to_string())
@@ -36,8 +35,7 @@ pub fn eval(ast : Ast) -> String {
     match ast {
         Ast::Number(n) => n.to_string(),
         Ast::Symbol(s) => s,
-        Ast::List(_)   => "()".to_string(),
-        Ast::Function(_) => unreachable!()
+        Ast::FunctionCall(_,_)   => "()".to_string(),
     }
 }
 
@@ -112,8 +110,8 @@ mod read_should {
     }
     #[test]
     fn read_a_list() {
-        assert_eq!(Ast::List(vec![]), read(&mut Cursor::new("()")));
-        assert_eq!(Ast::List(vec![Ast::Function("-".to_string()),Ast::Number(42)]), 
+        assert_eq!(Ast::FunctionCall("".to_string(),vec![]), read(&mut Cursor::new("()")));
+        assert_eq!(Ast::FunctionCall("-".to_string(),vec![Ast::Number(42)]), 
             read(&mut Cursor::new("(- 42)")))
     }
     #[test]
